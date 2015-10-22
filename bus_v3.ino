@@ -1,14 +1,15 @@
 //#include <fonts/Arial14.h>
 #include <fonts/SystemFont5x7.h>
-#include <fonts/SystemFont3x5.h>
-//#include <fonts/Tahoma.h>
+
+#include <fonts/Tahoma.h>
 #include <SPI.h>
 #include <DMD2.h>
 #include <SD.h>
 #include <LCD5110_Basic.h>
+#include <elapsedMillis.h>
 
-const uint8_t *FONT = SystemFont5x7;
-const uint8_t *smallFont = System3x5; 
+const uint8_t *FONT = Tahoma;
+const uint8_t *smallFont = Tahoma; 
 //const uint8_t *FONTKoridor = Tahoma; 
 
 const int BTN_F = 0;
@@ -28,10 +29,10 @@ SoftDMD Depan(W1,1,22,23,24,26,25,27);
 SoftDMD Indoor(W2,1,28,29,30,32,31,33);
 SoftDMD SampingKiri(W3,1,34,35,36,38,37,39);
 SoftDMD SampingKanan(W3,1,40,41,42,44,43,45);
-DMD_TextBox box(Depan,0,0,64,16); 
+DMD_TextBox box(Depan,20,0,107,16); 
 DMD_TextBox boxIndoor(Indoor,0,0,128,16);
-DMD_TextBox boxSampingKiri(SampingKiri,0,0,96,16);
-DMD_TextBox boxSampingKanan(SampingKanan,0,0,96,16); 
+DMD_TextBox boxSampingKiri(SampingKiri,20,0,75,16);
+DMD_TextBox boxSampingKanan(SampingKanan,20,0,75,16); 
 int xDepan;
 int xIndoor;
 int xKiri;
@@ -66,6 +67,12 @@ unsigned long debounceDelay = 300;
 int countKoridor = 0;
 int countSamping = 0;
 int countHalte = 0;
+
+int xx = 96;
+int xx2 = 128;
+char buf[2]={'a','b'};
+elapsedMillis timeElapsed;
+boolean sudahInputText = false;
 void setup() {
   Serial.begin(9600);
   myGLCD.InitLCD();
@@ -81,10 +88,10 @@ void setup() {
     delay(300);
 
   lcdWrite("Initializing SD card...");
-//  if(!SD.begin(53)) {
-//    lcdWrite(" failed!");
-//    return;
-//  }
+  if(!SD.begin(53)) {
+    lcdWrite(" failed!");
+    return;
+  }
   success = true;
   lcdWrite("SUCCESS");
   
@@ -112,7 +119,7 @@ void setup() {
   xIndoor = W2*32;
   xKiri = W3*32;
   xKanan = xKiri;
-  //readKoridor();
+  readKoridor();
 }
 
 void loop() {
@@ -179,10 +186,7 @@ void showKoridor(){
         xKiri = W3*32;
         xKanan = xKiri;
         
-        Depan.clearScreen();
         Indoor.clearScreen();
-        SampingKiri.clearScreen();
-        SampingKanan.clearScreen();
         int count = 0;
         int count_2 = 0;        
         for(int i=0;i<(110+countKoridor);i++){
@@ -210,74 +214,49 @@ void showKoridor(){
              delay(debounceDelay);
           }
           else{
-            
           //show lcd
-          if( (millis() - intervalDelay) >= 300){
+          if( (millis() - intervalDelay) >= 100){
               intervalDelay = millis();
               LCD("Halte",noHalte);
           }
-            
-            //Tampilkan koridor depan, sampingkiri
-            //sampingkanan dan halte
-                
-                //tampil nomor koridor
-                if(noKoridor<10){
-                Depan.drawString(1,0,String(noKoridor));
-                SampingKiri.drawString(1,0,String(noKoridor));
-                SampingKanan.drawString(1,0,String(noKoridor));
-                }else{
-                Depan.drawString(1,0,String(noKoridor));
-                SampingKiri.drawString(1,0,String(noKoridor));
-                SampingKanan.drawString(1,0,String(noKoridor));
-                }
-                //scroll text
-                //koridor atau jurusan
-                Depan.drawString(xDepan,0,koridor[noKoridor-1]);
-                box.scrollX(-1);
-                xDepan--;
-                
-                //samping kiri dan kanan
-                if(count <=(78+countSamping)){
-                  SampingKiri.drawString(xKiri,0,koridor[noKoridor-1]);
-                  boxSampingKiri.scrollX(-1);
-                  xKiri--;
-                  SampingKanan.drawString(xKanan,0,koridor[noKoridor-1]);
-                  boxSampingKanan.scrollX(-1);
-                  xKanan--;
-                }
-                else{
-                  count = 0;
-                  xKiri = W3*32;
-                  xKanan = xKiri;
-                  SampingKiri.clearScreen();
-                  SampingKanan.clearScreen();
-                }
-                count++;
-                
-                //halte
-                if(pilihHalte){
-                  countHalte = h[noKoridor-1][noHalte-1].length() * 6;
-                  if(countHalte <= 64)
-                    countHalte = 0;
-                  else
-                    countHalte = countHalte - 64;
+          if(!sudahInputText)
+            inputTextKoridor(koridor[noKoridor-1]);  
+          else
                     
-                  if(count_2 <=(64+countHalte)){
-                    Indoor.drawString(xIndoor,0,h[noKoridor-1][noHalte-1]);
-                    boxIndoor.scrollX(-1);
-                    xIndoor--;
-                  }
-                  else{
-                    count_2 = 0;
-                    xIndoor = W2*32;
-                    Indoor.clearScreen();
-                  }
-                  count_2++;
-                }
-                
-                delay(100);
+            
+            //Tampilkan halte
+//                if(pilihHalte){
+//                  countHalte = h[noKoridor-1][noHalte-1].length() * 6;
+//                  if(countHalte <= 64)
+//                    countHalte = 0;
+//                  else
+//                    countHalte = countHalte - 64;
+//                    
+//                  if(count_2 <=(64+countHalte)){
+//                    Indoor.drawString(0,0,h[noKoridor-1][noHalte-1]);
+//                    boxIndoor.scrollX(-1);
+//                    xIndoor--;
+//                  }
+//                  else{
+//                    count_2 = 0;
+//                  }
+//                  count_2++;
+//               }
+//                
+//                delay(100);
           }
       }
+}
+
+void showHalte(){
+  xIndoor = W2*32;
+  Indoor.clearScreen();
+    for(int i=0;i<64;i++){
+            Indoor.drawString(0,0,h[noKoridor-1][noHalte-1]);
+//            boxIndoor.scrollX(-1);
+//            xIndoor--;
+//            delay(100);
+  }
 }
 
 void readKoridor(){
@@ -285,7 +264,7 @@ void readKoridor(){
    String settingValue;
    int counter = 0;
    myFile = SD.open(fileName_k[0]);
-   lcdWrite("Load All Koridor ");
+   lcdWrite("Read Koridor ");
    delay(100);
    if (myFile) {
       while (myFile.available()) {
@@ -318,7 +297,7 @@ void readHalte_a(){
    char character;
    String settingValue;
    int counter = 0;
-   lcdWrite("Load All Halte ");
+   lcdWrite("Read Halte ");
    delay(100);
    for(int i=0; i<TotalKoridor;  i++){
      myFile = SD.open(fileName_h1[i]);
@@ -361,3 +340,79 @@ void lcdWrite(String z)
   myGLCD.setFont(SmallFont);
   myGLCD.print(z, CENTER, 0);
 }
+
+void inputTextKoridor(String text){
+  String len = text;
+  int max = 7;
+  int panjang = len.length();
+  
+  int maxSplit = panjang / max;
+  if(panjang % max != 0)
+    maxSplit +=1;
+  String temp[maxSplit];
+  for(int i=0;i<maxSplit;i++)
+    temp[i]="";
+  int lastCount = (maxSplit-1)*7;
+  if(panjang > max){
+    //split
+    int i = 0;
+    int j = 0;
+    while(i<maxSplit){
+    char buff[panjang+1];
+    len.toCharArray(buff,panjang+1);
+        if(i >= maxSplit-1){
+          for(int k=lastCount;k<panjang;k++){
+            temp[i] += buff[j];
+            j++;
+          }
+        }
+        else{
+          for(int k=0;k<7;k++){
+            temp[i] += buff[j];
+            j++;
+          }
+        }
+    i++;
+    }
+    for(int m=0;m<maxSplit;m++){
+      Serial.println(temp[m]);
+    }
+  }
+  sudahInputText = true;
+  displayKoridor(maxSplit, temp);
+}
+
+void displayKoridor(int maxSplit, String temp[]){
+  if(noKoridor<10){
+    SampingKiri.drawString(2,2,"0"+String(noKoridor));
+    SampingKiri.drawBox(0,0,18,15);
+  }
+  else{
+    SampingKiri.drawString(2,2,String(noKoridor));
+    SampingKiri.drawBox(0,0,18,15);
+  }
+  Depan.drawString(2,2,String(noKoridor));
+  Depan.drawBox(0,0,18,15);
+  
+  for(int m =0;m<maxSplit;m++){
+    int i=0;
+    xx = 96;
+    xx2 = 128;
+    int panjangSamping = SampingKiri.stringWidth(temp[m]);
+    int panjangKoridor = Depan.stringWidth(temp[m]);
+    while(i < panjangSamping+2){
+      SampingKiri.drawString(xx,2,temp[m]);
+      Depan.drawString(xx2,2,temp[m]);
+      if (timeElapsed > 150){               
+        box.scrollX(-1);
+        boxSampingKiri.scrollX(-1);
+        xx--;
+        xx2--;
+        i++;
+        timeElapsed = 0;              
+      }
+    }
+  }
+}
+
+
