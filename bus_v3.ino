@@ -72,7 +72,10 @@ int xx = 96;
 int xx2 = 128;
 char buf[2]={'a','b'};
 elapsedMillis timeElapsed;
+elapsedMillis timeElapsedLCD;
 boolean sudahInputText = false;
+int halteCount=0;
+int koridorCount=0;
 void setup() {
   Serial.begin(9600);
   myGLCD.InitLCD();
@@ -123,140 +126,84 @@ void setup() {
 }
 
 void loop() {
-  if(success==true){
+    if(success==true){
       //jika belum memilih koridor
-      if(!pilihKoridor){
-        button_f = digitalRead(BTN_F);
-        button_r = digitalRead(BTN_R);
-        button_c = digitalRead(BTN_C);
+      if(pilihKoridor){
+        menuHalte();
+      }
+      //jika sudah dipilih koridor tampilkan menu halte
+      else{
+        menuKoridor();
+      }
+    }
+    else{
+      if(timeElapsedLCD > 100){
+        lcdWrite("FAILED");
+        timeElapsedLCD=0;
+      }
+    }
+}
+void menuKoridor(){
+    button_f = digitalRead(BTN_F);
+    button_r = digitalRead(BTN_R);
+    button_c = digitalRead(BTN_C);
           if(button_f == LOW)
           {
-            myGLCD.clrScr();
+            //myGLCD.clrScr();
             noKoridor += 1;
-            if(noKoridor>20)
-              noKoridor=20;
+            if(noKoridor>koridorCount)
+              noKoridor=koridorCount;
               delay(debounceDelay);
           }
           else if(button_r == LOW){
-            myGLCD.clrScr();
+            //myGLCD.clrScr();
             noKoridor-=1;
             if(noKoridor<0)
               noKoridor=0;
               delay(debounceDelay);
           }
           else if(button_c == LOW && noKoridor>0){
-            myGLCD.clrScr();
+            //myGLCD.clrScr();
             pilihKoridor = true;
             delay(debounceDelay);
           }
           else{
-            if( (millis() - intervalDelay) >= 300) 
-            {
-              intervalDelay = millis();
+            if(timeElapsedLCD > 100){
               LCD("KORIDOR",noKoridor);
+              timeElapsedLCD = 0;
             }
           }
-      }
-      //jika sudah dipilih koridor tampilkan menu halte
-      else if(pilihKoridor){
-          showKoridor();
-      }
-    }
-    else{
-      lcdWrite("FAILED");
-      delay(1000);
-    }
 }
-
-void showKoridor(){
-        countKoridor = koridor[noKoridor-1].length() * 6;
-        if(countKoridor <= 110)
-          countKoridor = 0;
-        else
-          countKoridor = countKoridor - 110;
-        
-        countSamping = koridor[noKoridor-1].length() * 6;
-        if(countSamping <= 78)
-          countSamping = 0;
-        else
-          countSamping = countSamping - 78;
-          
-        xDepan = W1*32;
-        xIndoor = W2*32;
-        xKiri = W3*32;
-        xKanan = xKiri;
-        
-        Indoor.clearScreen();
-        int count = 0;
-        int count_2 = 0;        
-        for(int i=0;i<(110+countKoridor);i++){
+void menuHalte(){
           button_f = digitalRead(BTN_F);
           button_r = digitalRead(BTN_R);
           button_c = digitalRead(BTN_C);
           if(button_f == LOW){
-            myGLCD.clrScr();
+            //myGLCD.clrScr();
             noHalte+=1;
-            if(noHalte>20)
-              noHalte=20;
-               delay(debounceDelay);
+            if(noHalte>halteCount)
+              noHalte=halteCount;
+            delay(debounceDelay);
           }
           else if(button_r == LOW){
-            myGLCD.clrScr();
+            //myGLCD.clrScr();
             noHalte-=1;
             if(noHalte<0)
               noHalte=0;
-               delay(debounceDelay);
+            delay(debounceDelay);
           }
           else if(button_c == LOW && noHalte>0){
             pilihHalte = true;
-            myGLCD.clrScr();
-            //showHalte();
-             delay(debounceDelay);
+            //myGLCD.clrScr();
+            delay(debounceDelay);
           }
           else{
-          //show lcd
-          if( (millis() - intervalDelay) >= 100){
-              intervalDelay = millis();
+            if(timeElapsedLCD > 100){
               LCD("Halte",noHalte);
-          }
-          if(!sudahInputText)
+              timeElapsedLCD = 0;
+            }
             inputTextKoridor(koridor[noKoridor-1]);  
-          else
-                    
-            
-            //Tampilkan halte
-//                if(pilihHalte){
-//                  countHalte = h[noKoridor-1][noHalte-1].length() * 6;
-//                  if(countHalte <= 64)
-//                    countHalte = 0;
-//                  else
-//                    countHalte = countHalte - 64;
-//                    
-//                  if(count_2 <=(64+countHalte)){
-//                    Indoor.drawString(0,0,h[noKoridor-1][noHalte-1]);
-//                    boxIndoor.scrollX(-1);
-//                    xIndoor--;
-//                  }
-//                  else{
-//                    count_2 = 0;
-//                  }
-//                  count_2++;
-//               }
-//                
-//                delay(100);
           }
-      }
-}
-
-void showHalte(){
-  xIndoor = W2*32;
-  Indoor.clearScreen();
-    for(int i=0;i<64;i++){
-            Indoor.drawString(0,0,h[noKoridor-1][noHalte-1]);
-//            boxIndoor.scrollX(-1);
-//            xIndoor--;
-//            delay(100);
-  }
 }
 
 void readKoridor(){
@@ -264,8 +211,10 @@ void readKoridor(){
    String settingValue;
    int counter = 0;
    myFile = SD.open(fileName_k[0]);
-   lcdWrite("Read Koridor ");
-   delay(100);
+   if(timeElapsedLCD > 100){
+      lcdWrite("Read Koridor ");
+      timeElapsedLCD = 0;  
+   }
    if (myFile) {
       while (myFile.available()) {
         character = myFile.read();
@@ -279,17 +228,21 @@ void readKoridor(){
               settingValue = "";
               delay (100);
               counter++;
-            }
-    
+              koridorCount = counter;
+            } 
       }
    myFile.close();
-   lcdWrite("Success");
-   delay(100);
+      if(timeElapsedLCD > 100){
+        lcdWrite("Success");
+        timeElapsedLCD = 0;
+      }
    readHalte_a(); 
    } else {
    // if the file didn't open, print an error:
-    lcdWrite("ERROR READ");
-    delay(100);
+      if(timeElapsedLCD > 100){
+        lcdWrite("ERROR READ");
+        timeElapsedLCD = 0;
+      }
    }   
 }
 
@@ -297,8 +250,10 @@ void readHalte_a(){
    char character;
    String settingValue;
    int counter = 0;
-   lcdWrite("Read Halte ");
-   delay(100);
+   if(timeElapsedLCD > 100){
+      lcdWrite("Read Halte ");
+      timeElapsedLCD = 0;
+   }
    for(int i=0; i<TotalKoridor;  i++){
      myFile = SD.open(fileName_h1[i]);
      if (myFile) {
@@ -313,21 +268,26 @@ void readHalte_a(){
                 settingValue = "";
                 delay (100);
                 counter++;
+                halteCount = counter;
               }
         }
      myFile.close();
      } else {
-     lcdWrite("ERROR READ");
-     delay(100);
+      if(timeElapsedLCD > 100){
+        lcdWrite("ERROR READ");
+        timeElapsedLCD = 0;
+      }
      }
      counter = 0;
    }
-   lcdWrite("Success");
-   delay(100);
-   
+   if(timeElapsedLCD > 100){
+        lcdWrite("Success");
+        timeElapsedLCD = 0;
+   }
 }
 
 void LCD(String z, long int y){
+  myGLCD.clrScr();
   myGLCD.setFont(SmallFont);
   myGLCD.print(z, CENTER, 0);
   myGLCD.setFont(BigNumbers);
@@ -342,43 +302,45 @@ void lcdWrite(String z)
 }
 
 void inputTextKoridor(String text){
-  String len = text;
-  int max = 7;
-  int panjang = len.length();
-  
-  int maxSplit = panjang / max;
-  if(panjang % max != 0)
-    maxSplit +=1;
-  String temp[maxSplit];
-  for(int i=0;i<maxSplit;i++)
-    temp[i]="";
-  int lastCount = (maxSplit-1)*7;
-  if(panjang > max){
-    //split
-    int i = 0;
-    int j = 0;
-    while(i<maxSplit){
-    char buff[panjang+1];
-    len.toCharArray(buff,panjang+1);
-        if(i >= maxSplit-1){
-          for(int k=lastCount;k<panjang;k++){
-            temp[i] += buff[j];
-            j++;
+    String len = text;
+    int max = 7;
+    int panjang = len.length();
+    
+    int maxSplit = panjang / max;
+    if(panjang % max != 0)
+      maxSplit +=1;
+    String temp[maxSplit];
+    for(int i=0;i<maxSplit;i++)
+      temp[i]="";
+    int lastCount = (maxSplit-1)*7;
+  if(!sudahInputText){
+    if(panjang > max){
+      //split
+      int i = 0;
+      int j = 0;
+      while(i<maxSplit){
+      char buff[panjang+1];
+      len.toCharArray(buff,panjang+1);
+          if(i >= maxSplit-1){
+            for(int k=lastCount;k<panjang;k++){
+              temp[i] += buff[j];
+              j++;
+            }
           }
-        }
-        else{
-          for(int k=0;k<7;k++){
-            temp[i] += buff[j];
-            j++;
+          else{
+            for(int k=0;k<7;k++){
+              temp[i] += buff[j];
+              j++;
+            }
           }
-        }
-    i++;
+      i++;
+      }
+      for(int m=0;m<maxSplit;m++){
+        Serial.println(temp[m]);
+      }
     }
-    for(int m=0;m<maxSplit;m++){
-      Serial.println(temp[m]);
-    }
+    sudahInputText = true;
   }
-  sudahInputText = true;
   displayKoridor(maxSplit, temp);
 }
 
@@ -386,30 +348,59 @@ void displayKoridor(int maxSplit, String temp[]){
   if(noKoridor<10){
     SampingKiri.drawString(2,2,"0"+String(noKoridor));
     SampingKiri.drawBox(0,0,18,15);
+    SampingKanan.drawString(2,2,"0"+String(noKoridor));
+    SampingKanan.drawBox(0,0,18,15);
+    Depan.drawString(2,2,"0"+String(noKoridor));
+    Depan.drawBox(0,0,18,15);
   }
   else{
     SampingKiri.drawString(2,2,String(noKoridor));
     SampingKiri.drawBox(0,0,18,15);
+    SampingKanan.drawString(2,2,String(noKoridor));
+    SampingKanan.drawBox(0,0,18,15);
+    Depan.drawString(2,2,String(noKoridor));
+    Depan.drawBox(0,0,18,15);
   }
-  Depan.drawString(2,2,String(noKoridor));
-  Depan.drawBox(0,0,18,15);
-  
   for(int m =0;m<maxSplit;m++){
     int i=0;
-    xx = 96;
-    xx2 = 128;
+    int count=0;
+    xDepan = W1*32;
+    xIndoor = W2*32;
+    xKiri = W3*32;
+    xKanan = xKiri;
     int panjangSamping = SampingKiri.stringWidth(temp[m]);
-    int panjangKoridor = Depan.stringWidth(temp[m]);
+    //int panjangKoridor = Depan.stringWidth(temp[m]);
     while(i < panjangSamping+2){
-      SampingKiri.drawString(xx,2,temp[m]);
-      Depan.drawString(xx2,2,temp[m]);
+      SampingKiri.drawString(xKiri,2,temp[m]);
+      SampingKanan.drawString(xKanan,2,temp[m]);
+      Depan.drawString(xDepan,2,temp[m]);
       if (timeElapsed > 150){               
         box.scrollX(-1);
         boxSampingKiri.scrollX(-1);
-        xx--;
-        xx2--;
+        xKiri--;
+        xKanan--;
+        xDepan--;
         i++;
         timeElapsed = 0;              
+      }
+      //Tampilkan halte
+      if(pilihHalte){
+        countHalte = h[noKoridor-1][noHalte-1].length() * 6;
+        if(countHalte <= 64)
+           countHalte = 0;
+        else
+           countHalte = countHalte - 64;
+                    
+        if(count <=(64+countHalte)){
+           Indoor.drawString(xIndoor,2,h[noKoridor-1][noHalte-1]);
+           //boxIndoor.scrollX(-1);
+           xIndoor--;
+        }
+        else{
+           count = 0;
+        }
+        count++;
+        //delay(100);
       }
     }
   }
